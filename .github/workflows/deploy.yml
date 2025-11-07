@@ -14,9 +14,6 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
-environment:
-  name: github-pages
-
 jobs:
   test-and-validate:
     runs-on: ubuntu-latest
@@ -74,6 +71,9 @@ jobs:
     runs-on: ubuntu-latest
     name: 🏗️ Build & Deploy to GitHub Pages
     needs: test-and-validate
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
       - name: 📥 Checkout repository
