@@ -1,0 +1,164 @@
+name: Deploy Angular App to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+environment:
+  name: github-pages
+
+jobs:
+  test-and-validate:
+    runs-on: ubuntu-latest
+    name: 🧪 Test & Validate Code Quality
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+          
+      - name: 📦 Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+            
+      - name: 📦 Install dependencies
+        run: npm ci
+        
+      - name: 🧪 Run Jest tests with coverage
+        run: npm run test -- --coverage --watchAll=false
+        
+      - name: 📊 Check test coverage
+        run: |
+          # Extract coverage percentage from Jest output
+          COVERAGE=$(npm run test:ci 2>&1 | grep -oP 'All files\s+\|\s+\K\d+\.\d+' | head -1)
+          echo "Test coverage: $COVERAGE%"
+          
+          # Convert to integer for comparison
+          COVERAGE_INT=$(echo "$COVERAGE" | cut -d'.' -f1)
+          
+          if [ "$COVERAGE_INT" -lt 80 ]; then
+            echo "❌ Deployment stopped due to low test coverage (<80%)" >> $GITHUB_STEP_SUMMARY
+            echo "Current coverage: $COVERAGE%" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "✅ Test coverage ($COVERAGE%) meets requirement (≥80%)" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+      - name: 🔍 Run ESLint validation
+        run: |
+          # Run ESLint and capture output
+          if npm run lint 2>&1 | tee eslint-output.log; then
+            # Check if there are any errors (not just warnings)
+            if grep -q "error" eslint-output.log; then
+              echo "❌ Deployment stopped due to ESLint errors" >> $GITHUB_STEP_SUMMARY
+              echo "Please fix the following ESLint errors:" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              grep "error" eslint-output.log >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              exit 1
+            else
+              echo "✅ ESLint validation passed" >> $GITHUB_STEP_SUMMARY
+              if grep -q "warning" eslint-output.log; then
+                echo "⚠️ ESLint warnings found but deployment will continue" >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+          else
+            echo "❌ Deployment stopped due to ESLint errors" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    name: 🏗️ Build & Deploy to GitHub Pages
+    needs: test-and-validate
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+          
+      - name: 📦 Install dependencies
+        run: npm ci
+        
+      - name: 🔍 Detect Angular project name
+        id: project-info
+        run: |
+          PROJECT_NAME=$(jq -r '.projects | keys[0]' angular.json)
+          OUTPUT_PATH=$(jq -r ".projects.\"$PROJECT_NAME\".architect.build.options.outputPath" angular.json)
+          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+          echo "output_path=$OUTPUT_PATH" >> $GITHUB_OUTPUT
+          echo "Detected project: $PROJECT_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "Output path: $OUTPUT_PATH" >> $GITHUB_STEP_SUMMARY
+          
+      - name: 🏗️ Build Angular project
+        run: |
+          npm run build -- --base-href '/EsLint2/'
+          echo "✅ Angular build completed successfully" >> $GITHUB_STEP_SUMMARY
+          
+      - name: 📄 Copy index.html to 404.html for SPA routing
+        run: |
+          cp ${{ steps.project-info.outputs.output_path }}/index.html ${{ steps.project-info.outputs.output_path }}/404.html
+          echo "✅ Created 404.html for SPA routing support" >> $GITHUB_STEP_SUMMARY
+          
+      - name: ⚙️ Configure GitHub Pages
+        uses: actions/configure-pages@v4
+        
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ steps.project-info.outputs.output_path }}
+          
+      - name: 🚀 Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  notify-success:
+    runs-on: ubuntu-latest
+    name: 🎉 Notify Deployment Success
+    needs: [test-and-validate, build-and-deploy]
+    
+    steps:
+      - name: 🎉 Success notification
+        run: |
+          echo "### ✅ Deployment Successful 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **[View Site](https://AishwaryaKulkarni1801.github.io/EsLint2/)**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🧪 All tests passed & ESLint validation cleared." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Deployment Details:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Repository:** EsLint2" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** main" >> $GITHUB_STEP_SUMMARY
+          echo "- **Framework:** Angular" >> $GITHUB_STEP_SUMMARY
+          echo "- **Node.js:** LTS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed at:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔧 Quality Gates Passed:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Jest Tests with Coverage ≥ 80%" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ ESLint Validation (No Errors)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Angular Build Successful" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ GitHub Pages Deployment" >> $GITHUB_STEP_SUMMARY
