@@ -6,5 +6,9 @@ import { Component } from '@angular/core';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent {
-  title = 'EsLint2';
+  title = 'Angular Demo App';
+
+  getAngularVersion(): string {
+    return '16.x';
+  }
 }
