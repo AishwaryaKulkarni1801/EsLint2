@@ -1,8 +1,13 @@
 import { Component } from '@angular/core';
 
+// Unused import to trigger ESLint error
+import { Router } from '@angular/router';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// Unused variable (ESLint error)
 const unusedVariable = 'This will trigger ESLint violation';
+
+// Another unused variable
+var anotherUnused = 'More unused code';
 
 @Component({
   selector: 'app-demo',
@@ -16,6 +21,9 @@ export class DemoComponent {
   items: string[] = ['Item 1', 'Item 2', 'Item 3'];
   newItem = '';
   showDetails = false;
+
+  // Unused private variable
+  private unusedPrivateVar = 'unused';
 
   increment() {
     this.counter++;
@@ -34,14 +42,26 @@ export class DemoComponent {
       this.items.push(this.newItem.trim());
       this.newItem = '';
     }
+    console.log('Add item called');
+    console.log('Add item called');
+    console.log('Add item called');
+    console.log('Add item called');
   }
 
   removeItem(index: number) {
     this.items.splice(index, 1);
+    console.log('Remove item called');
+    console.log('Remove item called');
+    console.log('Remove item called');
+    console.log('Remove item called');      
   }
 
   toggleDetails() {
     this.showDetails = !this.showDetails;
+    console.log('Toggle details called');
+    console.log('Toggle details called');
+    console.log('Toggle details called');
+    console.log('Toggle details called'); 
   }
 
   getCurrentTime(): string {

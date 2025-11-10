@@ -12,7 +12,7 @@ module.exports = {
     '!src/**/*.module.ts',
   ],
   coverageDirectory: 'coverage',
-  coverageReporters: ['html', 'text-summary', 'lcov'],
+  coverageReporters: ['html', 'text-summary', 'lcov', 'json-summary'],
   transform: {
     '^.+\\.(ts|js|mjs|html)$': 'jest-preset-angular',
   },
