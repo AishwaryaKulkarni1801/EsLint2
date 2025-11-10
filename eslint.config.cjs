@@ -51,10 +51,12 @@ module.exports = [
       import: require('eslint-plugin-import'),
     },
     rules: {
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      // Treat unused vars as errors to fail CI when present
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/explicit-function-return-type': 'off',
+      // Make import order an error in CI
       'import/order': [
-        'warn',
+        'error',
         {
           groups: [['builtin', 'external'], 'internal', ['parent', 'sibling', 'index']],
           'newlines-between': 'always',

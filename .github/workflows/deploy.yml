@@ -48,23 +48,18 @@ jobs:
           # Simple coverage check - assume tests pass = coverage OK for this demo
           echo "✅ Test coverage meets requirement (≥80%)" >> $GITHUB_STEP_SUMMARY
           
-      - name: 🔍 Run ESLint validation
+      - name: 🔍 Run ESLint validation (CI - fail on warnings)
         run: |
-          # Run ESLint and capture output
-          if npm run lint > eslint-output.log 2>&1; then
-            echo "✅ ESLint validation passed" >> $GITHUB_STEP_SUMMARY
+          # Use lint:ci which runs eslint with --max-warnings=0 so warnings become errors
+          if npm run lint:ci > eslint-output.log 2>&1; then
+            echo "✅ ESLint validation passed (no errors or warnings)" >> $GITHUB_STEP_SUMMARY
           else
-            # Check if there are any errors (exit code != 0 usually means errors)
-            if grep -q "error" eslint-output.log 2>/dev/null; then
-              echo "❌ Deployment stopped due to ESLint errors" >> $GITHUB_STEP_SUMMARY
-              echo "Please fix the following ESLint errors:" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              cat eslint-output.log >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              exit 1
-            else
-              echo "✅ ESLint validation passed with warnings" >> $GITHUB_STEP_SUMMARY
-            fi
+            echo "❌ Deployment stopped due to ESLint errors/warnings" >> $GITHUB_STEP_SUMMARY
+            echo "Please fix the following ESLint output:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat eslint-output.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
           fi
 
   build-and-deploy:
